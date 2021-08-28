@@ -13,6 +13,11 @@ const {getUserDataAsync,parseXMLAsync,formatMessage} = require("../utils/tool");
 //引入template模块
 const template = require('./template');
 
+
+//引入reply模块
+const reply = require('./reply');
+
+
 module.exports = () => {
 
     return async (req,res,next) => {
@@ -74,7 +79,7 @@ module.exports = () => {
            */
           //接受请求体中的数据，流式数据
           const xmlData = await getUserDataAsync(req);
-          console.log(xmlData)
+          //console.log(xmlData)
           /**
            <xml><ToUserName><![CDATA[gh_e8406e0950a8]]></ToUserName>    //发送给：开发者ID
             <FromUserName><![CDATA[oeOkY67ADTrjsZKJ4NTkrak859O4]]></FromUserName>     //用户OpenID
@@ -86,7 +91,7 @@ module.exports = () => {
            */
           //将xml数据解析为js对象
           const jsData = await parseXMLAsync(xmlData);
-          console.log(jsData);
+          //console.log(jsData);
           /**
            {
             xml: {
@@ -118,25 +123,9 @@ module.exports = () => {
            * 1、开发者在5秒内未回复任何内容 
            * 2、开发者回复了异常数据，比如JSON数据、字符串、xml数据中有多余的空格 等
            */
-          let options ={
-              toUserName:message.FromUserName,
-              fromUserName:message.ToUserName,
-              createTime:Date.now(),
-              msgType:'text'
-          }
 
-          let content = '您在说什么？我听不懂！';
-          //判断用户发送的消息是否是文本内容
-          if (message.MsgType === 'text') {
-              //判断用户发送的消息内容具体是什么
-              if (message.Content === '1') {
-                  content = '大吉大利，今晚赤鸡';
-              }else if(message.Content === '2'){
-                  content = '落地成盒'
-              }else if(message.Content.match('爱')){
-                content = '我爱你！'
-            }
-          }
+          const options = reply(message);
+
           //最终回复用户的消息
         //   let replyMessage = `<xml>
         //   <ToUserName><![CDATA[${message.FromUserName}]]></ToUserName>
@@ -146,11 +135,8 @@ module.exports = () => {
         //   <Content><![CDATA[${content}]]></Content>
         // </xml>`
 
-        options.content = content;
-        console.log(options);
-
         const replyMessage = template(options);
-        console.log(options);
+        //console.log(options);
 
         //返回响应给微信服务器；
         res.send(replyMessage);
