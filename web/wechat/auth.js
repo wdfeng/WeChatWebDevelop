@@ -5,10 +5,13 @@
 const sha1 = require("sha1");
 
 //引入config模块
-const config = require("../config")
+const config = require("../config");
 
 //引入tool模块
-const {getUserDataAsync,parseXMLAsync,formatMessage} = require("../utils/tool")
+const {getUserDataAsync,parseXMLAsync,formatMessage} = require("../utils/tool");
+
+//引入template模块
+const template = require('./template');
 
 module.exports = () => {
 
@@ -115,6 +118,13 @@ module.exports = () => {
            * 1、开发者在5秒内未回复任何内容 
            * 2、开发者回复了异常数据，比如JSON数据、字符串、xml数据中有多余的空格 等
            */
+          let options ={
+              toUserName:message.FromUserName,
+              fromUserName:message.ToUserName,
+              createTime:Date.now(),
+              msgType:'text'
+          }
+
           let content = '您在说什么？我听不懂！';
           //判断用户发送的消息是否是文本内容
           if (message.MsgType === 'text') {
@@ -128,13 +138,19 @@ module.exports = () => {
             }
           }
           //最终回复用户的消息
-          let replyMessage = `<xml>
-          <ToUserName><![CDATA[${message.FromUserName}]]></ToUserName>
-          <FromUserName><![CDATA[${message.ToUserName}]]></FromUserName>
-          <CreateTime>${Date.now()}</CreateTime>
-          <MsgType><![CDATA[text]]></MsgType>
-          <Content><![CDATA[${content}]]></Content>
-        </xml>`
+        //   let replyMessage = `<xml>
+        //   <ToUserName><![CDATA[${message.FromUserName}]]></ToUserName>
+        //   <FromUserName><![CDATA[${message.ToUserName}]]></FromUserName>
+        //   <CreateTime>${Date.now()}</CreateTime>
+        //   <MsgType><![CDATA[text]]></MsgType>
+        //   <Content><![CDATA[${content}]]></Content>
+        // </xml>`
+
+        options.content = content;
+        console.log(options);
+
+        const replyMessage = template(options);
+        console.log(options);
 
         //返回响应给微信服务器；
         res.send(replyMessage);
