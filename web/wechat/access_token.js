@@ -61,9 +61,11 @@ class Wechat {
        return new Promise((resolve,reject) => {
             rp({method:'GET',url,json:true})
                     .then(res => {
+                        console.log("获取token-1:");
                         console.log(res);
                         //设置access_token的过期时间
                         res.expires_in = Date.now() + (res.expires_in -300) * 1000;
+                        console.log("获取token-2:");
                         console.log(res);
                         //将promise对象状态改为成功的被动态；
                         resolve(res);
@@ -125,11 +127,15 @@ class Wechat {
     @parm accessToken 要检查的凭据
    */
   isValidAccessToken(accessToken){
+      console.log("开始验证");
+      console.log(accessToken);
       //检测传入的参数是否有效
       if(!accessToken && !data.access_token && !data.expires_in){
           //代表access_token无效；
+      console.log("验证无效");
           return false;
       }
+      console.log("结束验证");
 
       //检测传入的参数是否在有效期内
     //   if(data.expires_in < Date.now()){
@@ -150,6 +156,8 @@ class Wechat {
   fetchAccessToken(){
       if(this.access_token && this.expires_in && this.isValidAccessToken(this)){
           //说明之前保存过access_token,并且它是有效的，直接使用
+         console.log("验证有效1");
+
           return Promise.resolve({
               access_token:this.access_token,
               expires_in:this.expires_in
@@ -160,13 +168,16 @@ class Wechat {
             //是fetchAccessToken函数的返回值
             return this.readAccessToken()
             .then(async res =>{
+                console.log("ok1");
                 //本地有文件
                 //判断他是否过期(isValidAccessToken)
                 if(this.isValidAccessToken(res)){
+                    console.log("验证有效2");
                     //有效的
                     return Promise.resolve(res);
                     //resolve(res);
                 }else{
+                    console.log("验证无效2");
                     //过期了
                     //发送请求获取access_token（getAccessToken）
                     const res = await this.getAccessToken()
@@ -181,6 +192,7 @@ class Wechat {
                 }
             })
             .catch(async err =>{
+                console.log("ok2");
                 //本地没有文件
                 //发送请求获取access_token（getAccessToken）
                 // w.getAccessToken()
@@ -196,6 +208,7 @@ class Wechat {
                 return Promise.resolve(res);
             })
             .then(res => {
+                console.log("ok3");
                 //将access_token挂载到this上
                 this.access_token = res.access_token;
                 this.expires_in = res.expires_in;
