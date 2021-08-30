@@ -32,14 +32,19 @@
             - 本地没有文件
                 - 发送请求获取access_token（getAccessToken），保存下来（本地文件）（saveAccessToken），直接使用
 */
+
+//只需要引入request-promise-native
+const rp = require("request-promise-native");
+
 //引入fs模块
 const {writeFile, readFile} = require("fs");
 
 //引入config模块
 const {appID, appsecret} = require("../config");
 
-//只需要引入request-promise-native
-const rp = require("request-promise-native");
+//引入menu模块
+const menu = require("./menu");
+
 
 //定义类，获取access_token
 class Wechat {
@@ -61,12 +66,12 @@ class Wechat {
        return new Promise((resolve,reject) => {
             rp({method:'GET',url,json:true})
                     .then(res => {
-                        console.log("获取token-1:");
-                        console.log(res);
+                        //console.log("获取token-1:");
+                        //console.log(res);
                         //设置access_token的过期时间
                         res.expires_in = Date.now() + (res.expires_in -300) * 1000;
-                        console.log("获取token-2:");
-                        console.log(res);
+                        console.log("getAccessToken：获取token,并且设置一个新的过期时间；");
+                        //console.log(res);
                         //将promise对象状态改为成功的被动态；
                         resolve(res);
                     })
@@ -88,7 +93,7 @@ class Wechat {
        return new Promise((resolve,reject)=>{
             writeFile('./accessToken.txt',accessToken,err =>{
                 if(!err){
-                    console.log('文件保存成功~');
+                    console.log('saveAccessToken：将获取的token存起来');
                     resolve();
                 }else{
                     reject("saveAccessToken方法出了问题："+err)
@@ -108,7 +113,7 @@ class Wechat {
       return new Promise((resolve,reject)=>{
            readFile('./accessToken.txt',(err,data) =>{
                if(!err){
-                   console.log('文件读取成功~');
+                   console.log('readAccessToken：从本地读取token成功~');
                    //将json字符串转化为js对象；
                    data = JSON.parse(data);
                    resolve(data);
@@ -127,25 +132,27 @@ class Wechat {
     @parm accessToken 要检查的凭据
    */
   isValidAccessToken(accessToken){
-      console.log("开始验证");
-      console.log(accessToken);
+      //console.log("开始验证");
+      //console.log(accessToken);
       //检测传入的参数是否有效
-      if(!accessToken && !data.access_token && !data.expires_in){
+      if(!accessToken && !accessToken.access_token && !accessToken.expires_in){
           //代表access_token无效；
-      console.log("验证无效");
+          console.log("isValidAccessToken：验证token无效");
           return false;
       }
-      console.log("结束验证");
+      //console.log("结束验证");
 
       //检测传入的参数是否在有效期内
-    //   if(data.expires_in < Date.now()){
-    //       //过期了
-    //       return false;
-    //   }else{
-    //       //没过期
-    //       return true;
-    //   }
-      return data.expires_in > Date.now();
+      if(accessToken.expires_in < Date.now()){
+          //过期了
+          console.log("isValidAccessToken：验证token过期了");
+          return false;
+      }else{
+          //没过期
+          console.log("isValidAccessToken：验证token还没过期");
+          return true;
+      }
+    //   return accessToken.expires_in > Date.now();
 
   }
 
@@ -156,7 +163,7 @@ class Wechat {
   fetchAccessToken(){
       if(this.access_token && this.expires_in && this.isValidAccessToken(this)){
           //说明之前保存过access_token,并且它是有效的，直接使用
-         console.log("验证有效1");
+         console.log("fetchAccessToken：验证之前存的token有效");
 
           return Promise.resolve({
               access_token:this.access_token,
@@ -168,16 +175,16 @@ class Wechat {
             //是fetchAccessToken函数的返回值
             return this.readAccessToken()
             .then(async res =>{
-                console.log("ok1");
+                //console.log("ok1");
                 //本地有文件
                 //判断他是否过期(isValidAccessToken)
                 if(this.isValidAccessToken(res)){
-                    console.log("验证有效2");
+                    console.log("fetchAccessToken：验证有效");
                     //有效的
                     return Promise.resolve(res);
                     //resolve(res);
                 }else{
-                    console.log("验证无效2");
+                    console.log("fetchAccessToken：验证无效");
                     //过期了
                     //发送请求获取access_token（getAccessToken）
                     const res = await this.getAccessToken()
@@ -192,7 +199,7 @@ class Wechat {
                 }
             })
             .catch(async err =>{
-                console.log("ok2");
+                console.log("fetchAccessToken：本地还没存过任何token，现在去存一个");
                 //本地没有文件
                 //发送请求获取access_token（getAccessToken）
                 // w.getAccessToken()
@@ -208,7 +215,7 @@ class Wechat {
                 return Promise.resolve(res);
             })
             .then(res => {
-                console.log("ok3");
+                console.log("fetchAccessToken：又获取到了，准备返回");
                 //将access_token挂载到this上
                 this.access_token = res.access_token;
                 this.expires_in = res.expires_in;
@@ -222,12 +229,84 @@ class Wechat {
             // })
   }
 
+  /**
+   * 用来创建自定义菜单的
+   * @param {*} menu 菜单配置对象
+   * @returns {Promise<any>}
+   */
+  createMenu(menu){
+      return new Promise(async (resolve,reject) => {
+          try{
+                //获取access_token
+                const data = await this.fetchAccessToken();
+                //console.log(data.access_token)
+
+                //定义请求的地址
+                const url =`https://api.weixin.qq.com/cgi-bin/menu/create?access_token=${data.access_token}`;
+                //console.log(url)
+
+                //发送请求
+                const result = rp({method:'POST',url,json:true,body:menu});
+
+                resolve(result);
+          }catch(e){
+                reject('createMenu方法出了问题：'+ e);
+          }
+
+      });
+  }
+
+  /**
+   * 用来删除自定义菜单的
+   * @returns {Promise<any>}
+   * 
+   */
+  deleteMenu(){
+      return new Promise(async (resolve,reject) => {
+          try {
+            //获取access_token
+            const data = await this.fetchAccessToken();
+    
+            //定义请求地址
+            const url = `https://api.weixin.qq.com/cgi-bin/menu/delete?access_token=${data.access_token}`;
+            //console.log(url)
+    
+            //发送请求
+            const result = await rp({method:'GET', url, json:true});
+    
+            resolve(result);
+              
+          } catch (error) {
+              reject('delete方法出问题了'+error);
+              
+          }
+          
+      });
+  }
+
 }
 
-//模拟测试
-const w = new Wechat();
+(async () =>{
+    //模拟测试
+    const w = new Wechat();
 
-w.fetchAccessToken();
+    //删除之前定义的菜单
+    let result = await w.deleteMenu();
+    console.log('删除菜单成功');
+
+    //创建菜单
+    let result2 = await w.createMenu(menu);
+    console.log('新建菜单成功');
+
+    
+    // let result = await w.fetchAccessToken();
+    // console.log(result);
+
+
+})()
+
+
+//w.fetchAccessToken();
 
 // 整理思路：
 // 读取本地文件（readAccessToken）
